@@ -33,8 +33,16 @@ export default function RegisterPage() {
 
     setIsLoading(true);
     try {
-      await api.post('/auth/register', { email, password });
-      setMsg('Account created successfully! You can now sign in.');
+      const r = await api.post('/auth/register', { email, password });
+      // If backend returns token+user, auto-login; otherwise show success
+      if (r.data?.token && r.data?.user) {
+        try { localStorage.setItem('auth_token', r.data.token); } catch {}
+        // No direct store access here; keep behavior simple and redirect to login page
+        setMsg('Account created! Redirecting to login...');
+        setTimeout(() => { window.location.href = '/auth/login'; }, 800);
+      } else {
+        setMsg('Account created successfully! You can now sign in.');
+      }
     } catch (e: any) { 
       setErr(e.response?.data?.message || 'Registration failed'); 
     } finally {

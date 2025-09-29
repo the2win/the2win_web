@@ -11,11 +11,21 @@ export function AuthBootstrap() {
 
   useEffect(() => {
     if (user || !initializing) return; // already attempted
+    // Restore token from localStorage if present
+    try {
+      const saved = localStorage.getItem('auth_token');
+      if (saved) {
+        // We don't have the user object yet; try /auth/me below which works via cookie or bearer
+        // Set token into store so api interceptor attaches it
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (useAuthStore.getState() as any).setAuth(saved, useAuthStore.getState().user);
+      }
+    } catch {}
     (async () => {
       try {
         const res = await api.get('/auth/me');
         if (res.data?.user) {
-          setAuth(undefined, res.data.user); // token not needed if cookie-based
+          setAuth(useAuthStore.getState().token, res.data.user);
         }
       } catch {
         // ignore silently

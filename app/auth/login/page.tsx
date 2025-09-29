@@ -31,8 +31,11 @@ export default function LoginPage() {
 
     try {
   const res = await api.post('/auth/login', { email, password });
-  // Support both legacy token response and cookie-only session
+  // Support both cookie-based and token-based flows
   const token = res.data.token as string | undefined;
+  if (token) {
+    try { localStorage.setItem('auth_token', token); } catch {}
+  }
   setAuth(token, res.data.user);
     } catch (e: any) {
       setError(e.response?.data?.message || 'Login failed');
