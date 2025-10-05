@@ -4,6 +4,7 @@ import { RequireAuth } from '../../components/RequireAuth';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
+import { formatLKR } from '../../lib/currency';
 
 export default function DashboardPage() {
   const user = useAuthStore(s=>s.user);
@@ -62,13 +63,13 @@ export default function DashboardPage() {
               </div>
             ) : (
               <>
-                <span className="text-4xl font-bold text-white">
-                  {balance?.toLocaleString() ?? '0'}
-                </span>
-                <span className="text-xl text-slate-400">coins</span>
+                <span className="text-4xl font-bold text-white">{formatLKR(balance ?? 0)}</span>
+                <span className="text-sm text-slate-500">&nbsp;(LKR)</span>
               </>
             )}
           </div>
+
+          <div className="mt-2 text-slate-400 text-sm">Your User ID: <span className="font-mono bg-slate-800/60 px-2 py-0.5 rounded text-slate-200">{user?.id}</span></div>
           
           <div className="mt-6 flex flex-wrap gap-3">
             <Link 
@@ -103,20 +104,7 @@ export default function DashboardPage() {
             </div>
           </Link>
 
-          {/* Transactions Card */}
-          <Link href="/wallet/transactions" className="group">
-            <div className="glass rounded-xl p-6 border border-slate-700/50 hover:border-cyan-500/50 transition-all duration-300 hover:scale-105">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                  <span className="text-2xl">📊</span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-white">Transactions</h3>
-                  <p className="text-sm text-slate-400">View your history</p>
-                </div>
-              </div>
-            </div>
-          </Link>
+          {/* Transactions Card hidden for non-admins; can be re-enabled for admins if needed */}
 
           {/* Profile Card */}
           <div className="group cursor-pointer">
@@ -136,11 +124,11 @@ export default function DashboardPage() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
+            {[
             { label: 'Games Played', value: '24', icon: '🎲' },
             { label: 'Total Wins', value: '12', icon: '🏆' },
             { label: 'Win Rate', value: '50%', icon: '📈' },
-            { label: 'Biggest Win', value: '500', icon: '💎' }
+            { label: 'Biggest Win (LKR)', value: 'Rs. 500', icon: '💎' }
           ].map((stat, index) => (
             <div 
               key={stat.label}

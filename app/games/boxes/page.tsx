@@ -32,6 +32,7 @@ export default function BoxesPage() {
   const [tick, setTick] = useState(0);
   const [myBet, setMyBet] = useState<{ roundId:number; boxIndex:number } | null>(null);
   const lastSettledRef = useRef<number | undefined>(undefined);
+  const [showHowTo, setShowHowTo] = useState(false);
 
   useEffect(() => {
     const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -104,9 +105,8 @@ export default function BoxesPage() {
   function winMult(i: number) { return Array.isArray(state?.winners) ? state!.winners!.find(w=>w.idx===i)?.multiplier : undefined; }
 
   return <RequireAuth><div className="max-w-5xl mx-auto space-y-6">
-    <div className="text-center space-y-2">
-      <h1 className="text-4xl font-bold bg-gradient-to-r from-rose-400 via-amber-400 to-orange-400 text-transparent bg-clip-text animate-gradient">🎁 10 Boxes</h1>
-      <p className="text-slate-400">Pick a box during the betting window. Three winners (2x / 3x / 5x) are revealed each round.</p>
+    <div className="text-right">
+      <button onClick={()=>setShowHowTo(true)} className="text-slate-300 hover:text-white" title="How to play">ℹ️</button>
     </div>
 
     <div className="glass rounded-2xl p-6 space-y-8 shadow-2xl shadow-rose-500/10">
@@ -200,20 +200,24 @@ export default function BoxesPage() {
             )}
           </div>
         </div>
-        <div className="space-y-4">
-          <h2 className="font-semibold">Round Summary</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className={`p-2 rounded bg-slate-800/50 border ${isWinning(i) ? 'border-amber-400' : 'border-slate-700'}`}>
-                <div className="font-mono">#{i+1}</div>
-                <div>Sum: {state?.totals?.[i] ?? 0}</div>
-                <div>Cnt: {state?.counts?.[i] ?? 0}</div>
-              </div>
-            ))}
-          </div>
-          <div className="text-xs text-slate-500">Winners chosen after betting closes. Least-bet positive box gets 3x. Remaining multipliers favor low/zero bet boxes.</div>
-        </div>
+        
       </div>
     </div>
+    {showHowTo && (
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={()=>setShowHowTo(false)}>
+        <div onClick={e=>e.stopPropagation()} className="max-w-md w-full bg-slate-900 rounded-xl border border-slate-700 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold">How to play Boxes</h3>
+            <button onClick={()=>setShowHowTo(false)} className="text-slate-300 hover:text-white">✕</button>
+          </div>
+          <ul className="list-disc pl-5 text-sm text-slate-300 space-y-1">
+            <li>Pick one of the 10 boxes and place your bet during the betting window.</li>
+            <li>After betting closes, three winning boxes are revealed with multipliers 2x, 3x, and 5x.</li>
+            <li>Winners are chosen with fairness in mind. Earn coins by hitting a winning box.</li>
+          </ul>
+          <div className="text-xs text-slate-400 mt-3">Tip: You can earn coins by winning rounds and through events/promotions.</div>
+        </div>
+      </div>
+    )}
   </div></RequireAuth>;
 }

@@ -28,6 +28,10 @@ export function NavBar() {
           {user ? (
             <>
               {/* Dashboard link removed for admin simplification */}
+              <Link href="/dashboard" className="text-slate-300 hover:text-white transition-all duration-200 hover:scale-105 relative group">
+                Dashboard
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-indigo-400 group-hover:w-full transition-all duration-300"></span>
+              </Link>
               <Link href="/wallet/deposit" className="text-slate-300 hover:text-white transition-all duration-200 hover:scale-105 relative group">
                 Deposit
                 <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-green-400 group-hover:w-full transition-all duration-300"></span>
@@ -40,8 +44,12 @@ export function NavBar() {
                 Transactions
                 <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-purple-400 group-hover:w-full transition-all duration-300"></span>
               </Link>
-              <span className="text-sm text-slate-400">Bal: <span className="text-indigo-300 font-semibold">{user.balance}</span></span>
-              <span className="text-sm text-slate-500">{user.email.split('@')[0]}</span>
+              <Link href="/profile" className="text-slate-300 hover:text-white transition-all duration-200 hover:scale-105 relative group">
+                Profile
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-400 group-hover:w-full transition-all duration-300"></span>
+              </Link>
+              <span className="text-sm text-slate-400">Bal: <span className="text-indigo-300 font-semibold">Rs. {Math.trunc(user.balance).toLocaleString('en-LK')}</span></span>
+              <span className="text-[11px] text-slate-500">ID: <span className="font-mono text-slate-300">{user.id}</span></span>
               <button 
                 onClick={logout} 
                 className="text-slate-300 hover:text-red-400 transition-all duration-200 hover:scale-105"
@@ -82,15 +90,23 @@ export function NavBar() {
       {/* Mobile Menu */}
       <div id="mobile-menu" className={`md:hidden transition-all duration-300 overflow-hidden ${mobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
         <div className="pt-4 pb-2 space-y-2">
+          {user && (
+            <div className="px-3 py-2 rounded bg-slate-800/50 border border-slate-700/50 text-xs text-slate-300 flex items-center justify-between">
+              <span>User ID: <span className="font-mono text-slate-200">{user.id}</span></span>
+              <span>Bal: <span className="text-indigo-300 font-semibold">Rs. {Math.trunc(user.balance).toLocaleString('en-LK')}</span></span>
+            </div>
+          )}
           <Link href="/" className="block text-slate-300 hover:text-white hover:bg-slate-800/50 px-3 py-2 rounded transition-all duration-200">Home</Link>
           <Link href="/games" className="block text-slate-300 hover:text-white hover:bg-slate-800/50 px-3 py-2 rounded transition-all duration-200">Games</Link>
           
           {user ? (
             <>
               {/* Dashboard link removed in mobile menu */}
+              <Link href="/dashboard" className="block text-slate-300 hover:text-white hover:bg-slate-800/50 px-3 py-2 rounded transition-all duration-200">Dashboard</Link>
               <Link href="/wallet/deposit" className="block text-slate-300 hover:text-white hover:bg-slate-800/50 px-3 py-2 rounded transition-all duration-200">Deposit</Link>
               <Link href="/wallet/withdraw" className="block text-slate-300 hover:text-white hover:bg-slate-800/50 px-3 py-2 rounded transition-all duration-200">Withdraw</Link>
               <Link href="/wallet/transactions" className="block text-slate-300 hover:text-white hover:bg-slate-800/50 px-3 py-2 rounded transition-all duration-200">Transactions</Link>
+              <Link href="/profile" className="block text-slate-300 hover:text-white hover:bg-slate-800/50 px-3 py-2 rounded transition-all duration-200">Profile</Link>
               <button onClick={logout} className="block w-full text-left text-slate-300 hover:text-red-400 hover:bg-slate-800/50 px-3 py-2 rounded transition-all duration-200">Logout</button>
             </>
           ) : (

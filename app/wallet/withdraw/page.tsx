@@ -7,9 +7,9 @@ type WithdrawMethod = 'bank_in' | 'binance' | 'cash_agent';
 interface BankAccount { id: string; bankName: string; accountNumber: string; accountHolder: string; isDefault?: boolean }
 
 const METHOD_META: Record<WithdrawMethod, { label: string; desc: string; min: number; max: number; extra?: string }> = {
-  bank_in: { label: 'Bank Transfer (IN)', desc: 'Withdraw to your Indian bank account.', min: 10, max: 100000, extra: 'Typically processed in 1–24h on business days.' },
-  binance: { label: 'Binance (USDT)', desc: 'Withdraw USDT to your Binance address.', min: 10, max: 5000, extra: 'On-chain network fee may apply. Ensure the correct network (TRC20/BEP20).' },
-  cash_agent: { label: 'Cash Agent (Fastest)', desc: 'Our cash agent processes withdrawals quickly.', min: 10, max: 100000, extra: 'Easiest and fastest method.' }
+  bank_in: { label: 'Bank Transfer (IN)', desc: 'Withdraw to your Indian bank account.', min: 1000, max: 200000, extra: 'Processed in 1–24h on business days.' },
+  binance: { label: 'Binance (USDT)', desc: 'Currently not available for your country.', min: 1000, max: 200000 },
+  cash_agent: { label: 'Cash Agent (Fastest)', desc: 'Our cash agent will contact you on WhatsApp.', min: 1000, max: 200000, extra: 'Agent: +94786183162' }
 };
 
 export default function WithdrawPage(){
@@ -30,6 +30,9 @@ export default function WithdrawPage(){
   const [binanceAddress,setBinanceAddress]=useState('');
   // Optional note for cash_agent
   const [agentNote,setAgentNote]=useState('');
+  const [whatsapp,setWhatsapp]=useState('');
+  const [showHistory,setShowHistory]=useState(false);
+  const [history,setHistory]=useState<{ type: 'deposit'|'withdraw'; id: string; amount: number; method: string; createdAtMs?: number; status?: string }[]>([]);
 
   const meta = METHOD_META[method];
 
@@ -50,7 +53,7 @@ export default function WithdrawPage(){
     })();
   },[]);
 
-  const limitsText = useMemo(()=>`Limits: ${meta.min} – ${meta.max}`, [meta]);
+  const limitsText = useMemo(()=>`Limits: Rs. ${meta.min} – Rs. ${meta.max} (max per day Rs. 200000)`, [meta]);
 
   function validate(): string | null {
     if (amount === '' || isNaN(Number(amount))) return 'Enter an amount.';
@@ -60,7 +63,7 @@ export default function WithdrawPage(){
     if (method === 'bank_in') {
       if (!selectedAcctId) return 'Select a bank account.';
     } else if (method === 'binance') {
-      if (!binanceAddress || binanceAddress.length < 10) return 'Enter a valid Binance address.';
+      return 'Binance is currently not available.';
     }
     return null;
   }
@@ -94,22 +97,37 @@ export default function WithdrawPage(){
     try {
       const payload: any = { amount: Number(amount), method };
       if (method==='bank_in') payload.bankAccountId = selectedAcctId;
-      if (method==='binance') payload.dest = binanceAddress.trim();
-      if (method==='cash_agent' && agentNote) payload.dest = agentNote.trim();
+      if (method==='binance') { setError('Binance is currently not available for your country.'); setSubmitting(false); return; }
+      if (method==='cash_agent') payload.dest = [agentNote, whatsapp ? `whatsapp:${whatsapp}` : ''].filter(Boolean).join(' | ');
       await api.post('/wallet/withdraw', payload);
       setMsg('Withdrawal request submitted. Once approved by admin, funds are processed within 10 minutes.');
       setAmount('');
       setBinanceAddress('');
       setAgentNote('');
+      setWhatsapp('');
     } catch (e:any) { setError(e.response?.data?.message || 'Failed to submit withdrawal'); }
     finally { setSubmitting(false); }
   }
 
   return <RequireAuth><div className="max-w-3xl mx-auto space-y-6">
-    <div>
+    <div className="flex items-center justify-between">
       <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-cyan-300 text-transparent bg-clip-text">Withdraw Funds</h2>
-      <p className="text-slate-400 text-sm mt-1">Select a withdrawal method and provide required details.</p>
+      <button onClick={()=>{
+        setShowHistory(true);
+        (async()=>{
+          try{
+            const [d,w] = await Promise.all([
+              api.get('/wallet/deposit-requests'),
+              api.get('/wallet/withdraw-requests')
+            ]);
+            const dep = (d.data.requests||[]).map((r:any)=>({ type:'deposit', id:r.id, amount:r.amount, method:r.method, createdAtMs:r.createdAtMs, status:r.status }));
+            const wit = (w.data.requests||[]).map((r:any)=>({ type:'withdraw', id:r.id, amount:r.amount, method:r.method, createdAtMs:r.createdAtMs, status:r.status }));
+            setHistory([...dep, ...wit].sort((a,b)=> (b.createdAtMs||0) - (a.createdAtMs||0)));
+          }catch{}
+        })();
+      }} className="text-slate-300 hover:text-white" title="History">🕘</button>
     </div>
+  <p className="text-slate-400 text-sm">Select a withdrawal method and provide required details.</p>
 
     <div className="rounded-xl border border-slate-700/60 bg-slate-800/40 backdrop-blur p-4">
       <div className="flex flex-wrap gap-2 mb-4">
@@ -125,7 +143,7 @@ export default function WithdrawPage(){
           <input type="number" min={meta.min} max={meta.max} step="0.01" value={amount} onChange={e=>setAmount(e.target.value === '' ? '' : Number(e.target.value))}
             placeholder={`${meta.min} - ${meta.max}`} className="w-full px-4 py-3 rounded-lg bg-slate-900/50 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
           <p className="text-[11px] text-slate-500">{limitsText}</p>
-          <p className="text-[11px] text-slate-500">Note: 1000 coins = 10 USDT.</p>
+          <p className="text-[11px] text-slate-500">All amounts in LKR.</p>
         </div>
 
         {method === 'bank_in' && (
@@ -167,9 +185,7 @@ export default function WithdrawPage(){
 
         {method === 'binance' && (
           <div className="space-y-2">
-            <label className="text-xs uppercase tracking-wide text-slate-400">Binance USDT Address</label>
-            <input value={binanceAddress} onChange={e=>setBinanceAddress(e.target.value)} placeholder="Enter destination address" className="w-full px-4 py-2 rounded bg-slate-900/50 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-            <p className="text-[11px] text-slate-500">Ensure network matches (TRC20 / BEP20). Wrong network may lose funds.</p>
+            <div className="text-sm text-amber-400">Currently not available for your country.</div>
           </div>
         )}
 
@@ -177,7 +193,9 @@ export default function WithdrawPage(){
           <div className="space-y-2">
             <label className="text-xs uppercase tracking-wide text-slate-400">Note to Cash Agent (optional)</label>
             <input value={agentNote} onChange={e=>setAgentNote(e.target.value)} placeholder="e.g., preferred contact or time" className="w-full px-4 py-2 rounded bg-slate-900/50 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-            <p className="text-[11px] text-slate-500">Our cash agent will reach out and process the withdrawal quickly.</p>
+            <label className="text-xs uppercase tracking-wide text-slate-400">Your WhatsApp Number</label>
+            <input value={whatsapp} onChange={e=>setWhatsapp(e.target.value)} placeholder="e.g., +94xxxxxxxxx" className="w-full px-4 py-2 rounded bg-slate-900/50 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <p className="text-[11px] text-slate-500">Cash agent (+94786183162) will contact you on WhatsApp.</p>
           </div>
         )}
 
@@ -189,6 +207,27 @@ export default function WithdrawPage(){
           {submitting ? 'Submitting...' : 'Submit Withdrawal'}
         </button>
       </form>
+    {showHistory && (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={()=>setShowHistory(false)}>
+      <div onClick={e=>e.stopPropagation()} className="max-w-lg w-full bg-slate-900 rounded-xl border border-slate-700 p-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-semibold">Deposits & Withdrawals</h3>
+          <button onClick={()=>setShowHistory(false)} className="text-slate-300 hover:text-white">✕</button>
+        </div>
+        <div className="space-y-2 text-sm max-h-[60vh] overflow-y-auto">
+          {!history.length && <div className="text-slate-500 text-sm">No history yet.</div>}
+          {history.map((h,i)=> (
+            <div key={i} className="flex justify-between bg-slate-800/50 rounded px-3 py-2">
+              <span className="uppercase text-xs text-slate-400">{h.type}</span>
+              <span>{h.method}</span>
+              <span>Rs. {Math.trunc(h.amount).toLocaleString('en-LK')}</span>
+              <span className="text-xs text-slate-500">{h.status || 'pending'}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+    )}
     </div>
   </div></RequireAuth>;
 }

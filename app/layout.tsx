@@ -4,6 +4,7 @@ import { LeftSidebar } from '../components/LeftSidebar';
 import { Providers } from '../components/Providers';
 import { AuthBootstrap } from '../components/AuthBootstrap';
 import { NavBar } from '../components/NavBar';
+import { MobileBalanceBar } from '../components/MobileBalanceBar';
 
 export const metadata = { title: 'The2Win Platform', description: 'Mini games betting platform' };
 
@@ -17,6 +18,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Top NavBar visible on mobile, optionally on all sizes */}
         <div className="md:hidden sticky top-0 z-40">
           <NavBar />
+          {/* Mobile balance bar directly below navbar */}
+          <MobileBalanceBar />
         </div>
 
         <div className="flex min-h-screen">

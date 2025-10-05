@@ -2,6 +2,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { useEffect } from 'react';
+import { formatLKR } from '../../lib/currency';
 import { useAuthStore } from '../../lib/authStore';
 import Link from 'next/link';
 
@@ -15,6 +17,11 @@ export default function GamesPage() {
   const playMutation = useMutation({
     mutationFn: async ({ gameId, bet }: { gameId: string; bet: number }) => (await api.post('/games/play', { gameId, bet })).data,
   });
+  const [winTotal, setWinTotal] = useState<number>(0);
+  useEffect(()=>{ (async()=>{
+    if(!user) { setWinTotal(0); return; }
+    try { const r = await api.get('/wallet/summary'); setWinTotal(Number(r.data?.WIN || 0)); } catch {}
+  })(); }, [user]);
 
   return (
     <div className="space-y-6">
@@ -23,6 +30,12 @@ export default function GamesPage() {
         {!user && <Link href="/auth/login" className="text-sm text-indigo-400">Login to Play</Link>}
       </div>
       {gamesQuery.isLoading && <p>Loading games...</p>}
+      {user && (
+        <div className="p-3 rounded bg-slate-800/60 border border-slate-700 flex items-center justify-between">
+          <span className="text-sm text-slate-300">Your total winnings</span>
+          <span className="text-lg font-semibold text-emerald-400">{formatLKR(winTotal)}</span>
+        </div>
+      )}
       {gamesQuery.data && (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
           {/* Crash Game Card */}
@@ -96,7 +109,7 @@ export default function GamesPage() {
       {playMutation.data && (
         <p className="text-sm">
           Result: <span className="font-semibold">{playMutation.data.result}</span>
-          {playMutation.data.winnings && ` (+${playMutation.data.winnings})`}
+          {playMutation.data.winnings && ` (+${formatLKR(playMutation.data.winnings)})`}
         </p>
       )}
 

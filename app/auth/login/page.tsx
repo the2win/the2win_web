@@ -1,9 +1,10 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuthStore, type AuthState } from '@/lib/authStore';
 import Link from 'next/link';
 import { z } from 'zod';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -12,6 +13,13 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [focusedField, setFocusedField] = useState('');
   const setAuth = useAuthStore((s: AuthState) => s.setAuth);
+  const user = useAuthStore((s: AuthState) => s.user);
+  const router = useRouter();
+
+  // If already logged in, go to dashboard
+  useEffect(() => {
+    if (user) router.replace('/dashboard');
+  }, [user, router]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,6 +45,8 @@ export default function LoginPage() {
     try { localStorage.setItem('auth_token', token); } catch {}
   }
   setAuth(token, res.data.user);
+    // Navigate to dashboard after successful login
+    router.replace('/dashboard');
     } catch (e: any) {
       setError(e.response?.data?.message || 'Login failed');
     } finally {

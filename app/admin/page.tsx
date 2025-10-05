@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '@/lib/authStore';
 import { RequireAuth } from '@/components/RequireAuth';
 import { api } from '@/lib/api';
+import { formatLKR } from '@/lib/currency';
 
 // Minimal stats now only uses transactions summary for admin expenses/income
 type TxSummary = { DEPOSIT: number; WITHDRAW: number; BET: number; WIN: number };
@@ -26,6 +27,9 @@ export default function AdminPage(){
   const [newPatName, setNewPatName] = useState('');
   const [newPatSeq, setNewPatSeq] = useState('2,2.5,3,1.8,2.2');
   const [patMsg, setPatMsg] = useState('');
+  // Simple overrides UI
+  const [nextCrash, setNextCrash] = useState<string>('2.0');
+  const [boxesOverride, setBoxesOverride] = useState<string>('');
 
   async function refresh() {
     try {
@@ -83,7 +87,30 @@ export default function AdminPage(){
     {!isAdmin && <p className="text-sm text-red-400">Access denied – not an admin.</p>}
     {isAdmin && (
       <div className="space-y-10">
-        {/* Crash Patterns only */}
+        {/* Crash Controls */}
+        <section className="space-y-4">
+          <h2 className="text-xl font-semibold">Crash Controls</h2>
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="p-4 rounded-lg bg-slate-800/60 border border-slate-700 space-y-3">
+              <h3 className="font-semibold">Set Next Crash Value</h3>
+              <div className="text-xs text-slate-400">Set the next round crash multiplier (e.g. 2.0)</div>
+              <div className="flex gap-2">
+                <input value={nextCrash} onChange={e=>setNextCrash(e.target.value)} className="w-full px-3 py-2 rounded bg-slate-900/60 border border-slate-600 text-sm" />
+                <button onClick={async()=>{ setErr(''); setMsg(''); try { const v = Number(nextCrash); if (!isFinite(v) || v<=1) throw new Error('Enter >1'); await api.post('/admin/overrides/crash', { crashPoint: v }); setMsg('Next crash queued'); } catch(e:any){ setErr(e.response?.data?.message || e.message || 'Failed'); } }} className="px-3 py-2 rounded bg-rose-600 text-sm font-medium">Queue</button>
+              </div>
+            </div>
+            <div className="p-4 rounded-lg bg-slate-800/60 border border-slate-700 space-y-3 lg:col-span-2">
+              <h3 className="font-semibold">Boxes: Set Next Winners</h3>
+              <div className="text-xs text-slate-400">Enter 1-3 box indexes (1-10) comma-separated. Multipliers assigned as 5x,3x,2x in order.</div>
+              <div className="flex gap-2">
+                <input value={boxesOverride} onChange={e=>setBoxesOverride(e.target.value)} placeholder="e.g. 4,7,1" className="w-full px-3 py-2 rounded bg-slate-900/60 border border-slate-600 text-sm" />
+                <button onClick={async()=>{ setErr(''); setMsg(''); try { const idxs = boxesOverride.split(',').map(s=>parseInt(s.trim(),10)-1).filter(n=>Number.isInteger(n) && n>=0 && n<=9); if (!idxs.length) throw new Error('Enter 1-3 indexes between 1 and 10'); await api.post('/admin/overrides/boxes', { indexes: idxs }); setMsg('Next boxes winners queued'); setBoxesOverride(''); } catch(e:any){ setErr(e.response?.data?.message || e.message || 'Failed'); } }} className="px-3 py-2 rounded bg-indigo-600 text-sm font-medium">Queue</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Crash Patterns */}
         <section className="space-y-4">
           <h2 className="text-xl font-semibold">Crash Patterns</h2>
           <div className="grid lg:grid-cols-2 gap-6">
@@ -122,93 +149,7 @@ export default function AdminPage(){
           </div>
         </section>
 
-        {/* Transactions Summary */}
-        {summary && (
-          <section className="space-y-2">
-            <h2 className="text-xl font-semibold">Transactions Summary</h2>
-            <div className="grid sm:grid-cols-4 gap-3 text-center">
-              <div className="p-3 rounded bg-slate-800/60 border border-slate-700">
-                <div className="text-xs text-slate-400">Deposited</div>
-                <div className="text-lg font-semibold">{summary.DEPOSIT}</div>
-              </div>
-              <div className="p-3 rounded bg-slate-800/60 border border-slate-700">
-                <div className="text-xs text-slate-400">Withdrawn</div>
-                <div className="text-lg font-semibold">{summary.WITHDRAW}</div>
-              </div>
-              <div className="p-3 rounded bg-slate-800/60 border border-slate-700">
-                <div className="text-xs text-slate-400">Bets</div>
-                <div className="text-lg font-semibold">{summary.BET}</div>
-              </div>
-              <div className="p-3 rounded bg-slate-800/60 border border-slate-700">
-                <div className="text-xs text-slate-400">Payouts (WIN)</div>
-                <div className="text-lg font-semibold">{summary.WIN}</div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Users */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Users</h2>
-            <button onClick={refresh} className="text-xs px-3 py-1 rounded bg-slate-700">Refresh</button>
-          </div>
-          <div className="overflow-x-auto rounded border border-slate-700">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-800/60">
-                <tr>
-                  <th className="text-left px-3 py-2">Email</th>
-                  <th className="text-left px-3 py-2">Role</th>
-                  <th className="text-right px-3 py-2">Balance</th>
-                  <th className="text-left px-3 py-2">Created</th>
-                  <th className="text-left px-3 py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map(u => (
-                  <tr key={u.id} className="border-t border-slate-700/50">
-                    <td className="px-3 py-2">{u.email}</td>
-                    <td className="px-3 py-2">{u.role}</td>
-                    <td className="px-3 py-2 text-right">{u.balance}</td>
-                    <td className="px-3 py-2">{new Date(u.createdAt).toLocaleString()}</td>
-                    <td className="px-3 py-2">
-                      <button onClick={()=>deleteUser(u.id)} className="text-xs px-2 py-1 rounded bg-red-600">Delete</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* Transactions */}
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold">Recent Transactions</h2>
-          <div className="overflow-x-auto rounded border border-slate-700">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-800/60">
-                <tr>
-                  <th className="text-left px-3 py-2">Type</th>
-                  <th className="text-right px-3 py-2">Amount</th>
-                  <th className="text-left px-3 py-2">Meta</th>
-                  <th className="text-left px-3 py-2">At</th>
-                </tr>
-              </thead>
-              <tbody>
-                {txs.map(t => (
-                  <tr key={t.id} className="border-t border-slate-700/50">
-                    <td className="px-3 py-2">{t.type}</td>
-                    <td className="px-3 py-2 text-right">{t.amount}</td>
-                    <td className="px-3 py-2"><pre className="text-[10px] whitespace-pre-wrap">{t.meta ? JSON.stringify(t.meta) : '-'}</pre></td>
-                    <td className="px-3 py-2">{t.createdAt ? new Date(t.createdAt).toLocaleString() : ''}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* Deposit Requests */}
+        {/* Deposit Requests (top) */}
         <section className="space-y-3">
           <h2 className="text-xl font-semibold">Deposit Requests</h2>
           <div className="overflow-x-auto rounded border border-slate-700">
@@ -250,7 +191,7 @@ export default function AdminPage(){
           </div>
         </section>
 
-        {/* Withdraw Requests */}
+        {/* Withdraw Requests (below Deposit Requests) */}
         <section className="space-y-3">
           <h2 className="text-xl font-semibold">Withdraw Requests</h2>
           <div className="overflow-x-auto rounded border border-slate-700">
@@ -281,6 +222,67 @@ export default function AdminPage(){
                         </>
                       )}
                     </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Users */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Users</h2>
+            <button onClick={refresh} className="text-xs px-3 py-1 rounded bg-slate-700">Refresh</button>
+          </div>
+          <div className="overflow-x-auto rounded border border-slate-700">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-800/60">
+                <tr>
+                  <th className="text-left px-3 py-2">Email</th>
+                  <th className="text-left px-3 py-2">Role</th>
+                  <th className="text-right px-3 py-2">Balance</th>
+                  <th className="text-left px-3 py-2">Created</th>
+                  <th className="text-left px-3 py-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map(u => (
+                  <tr key={u.id} className="border-t border-slate-700/50">
+                    <td className="px-3 py-2">{u.email}</td>
+                    <td className="px-3 py-2">{u.role}</td>
+                    <td className="px-3 py-2 text-right">{u.balance}</td>
+                    <td className="px-3 py-2">{new Date(u.createdAt).toLocaleString()}</td>
+                    <td className="px-3 py-2">
+                      <button onClick={()=>deleteUser(u.id)} className="text-xs px-2 py-1 rounded bg-red-600">Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Recent Transactions (bottom) */}
+        <section className="space-y-3">
+          <h2 className="text-xl font-semibold">Recent Transactions</h2>
+          <div className="overflow-x-auto rounded border border-slate-700">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-800/60">
+                <tr>
+                  <th className="text-left px-3 py-2">Type</th>
+                  <th className="text-right px-3 py-2">Amount</th>
+                  <th className="text-left px-3 py-2">Meta</th>
+                  <th className="text-left px-3 py-2">At</th>
+                </tr>
+              </thead>
+              <tbody>
+                {txs.map(t => (
+                  <tr key={t.id} className="border-t border-slate-700/50">
+                    <td className="px-3 py-2">{t.type}</td>
+                    <td className="px-3 py-2 text-right">{t.amount}</td>
+                    <td className="px-3 py-2"><pre className="text-[10px] whitespace-pre-wrap">{t.meta ? JSON.stringify(t.meta) : '-'}</pre></td>
+                    <td className="px-3 py-2">{t.createdAt ? new Date(t.createdAt).toLocaleString() : ''}</td>
                   </tr>
                 ))}
               </tbody>

@@ -32,6 +32,8 @@ export default function CrashGamePage() {
   const [amountA, setAmountA] = useState(10);
   const [amountB, setAmountB] = useState(10);
   const [showHistory, setShowHistory] = useState(false);
+  const [showHowTo, setShowHowTo] = useState(false);
+  const [topPlayersValue, setTopPlayersValue] = useState<number>(()=> Math.floor(7000 + Math.random()*8000));
   // Optimistic local bet flags to toggle buttons immediately on success
   const [localBets, setLocalBets] = useState<{ A?: { roundId: number; cashedOut?: boolean }, B?: { roundId: number; cashedOut?: boolean } }>({});
 
@@ -75,6 +77,8 @@ export default function CrashGamePage() {
       if (prev.B && prev.B.roundId !== state.roundId) next.B = undefined;
       return next;
     });
+    // Randomize top players value each round between 7000-15000
+    setTopPlayersValue(Math.floor(7000 + Math.random()*8000));
   }, [state?.roundId]);
 
   function normalizeAmount(v: number) {
@@ -163,17 +167,10 @@ export default function CrashGamePage() {
   const myBetB = myBetB_sse || (hasLocalB ? { userId: myId || '', amount: amountB, cashedOut: !!localBets.B?.cashedOut, cashoutMultiplier: undefined, slot: 'B' as const } : undefined);
 
   return <RequireAuth><div className="max-w-4xl mx-auto space-y-6">
-    {/* Header with attractive title and live stats */}
-    <div className="text-center space-y-2">
-      <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-cyan-300 text-transparent bg-clip-text animate-gradient">
-        🚀 Crash Flight
-      </h1>
-      <p className="text-slate-400">Place your bet and cash out before the plane crashes!</p>
-    </div>
 
     <div className="glass rounded-2xl p-6 space-y-6 shadow-2xl shadow-indigo-500/10">
       {/* Game Stats Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-800/30 rounded-xl">
+        <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-800/30 rounded-xl">
         <div className="flex items-center gap-4">
           <div className="text-center">
             <div className="text-xs text-slate-400 uppercase tracking-wide">Round</div>
@@ -183,6 +180,10 @@ export default function CrashGamePage() {
             <div className="text-xs text-slate-400 uppercase tracking-wide">Players</div>
             <div className="text-lg font-bold text-cyan-300">{state?.bets.length || 0}</div>
           </div>
+            <div className="text-center">
+              <div className="text-xs text-slate-400 uppercase tracking-wide">Top Players</div>
+              <div className="text-lg font-bold text-green-300">{topPlayersValue}</div>
+            </div>
           {isAdmin && (
             <div className="text-center">
               <div className="text-xs text-slate-400 uppercase tracking-wide">Nonce</div>
@@ -202,6 +203,7 @@ export default function CrashGamePage() {
           })}
           {!history.length && <span className="text-xs text-slate-500">Loading history...</span>}
         </div>
+          <button onClick={()=>setShowHowTo(true)} className="ml-auto text-slate-300 hover:text-white" title="How to play">ℹ️</button>
       </div>
 
       <div className="text-center space-y-4">
@@ -453,19 +455,6 @@ export default function CrashGamePage() {
       )}
 
       <div className="grid md:grid-cols-2 gap-6">
-        <div>
-          <h2 className="font-semibold mb-2">Current Bets</h2>
-          <div className="max-h-40 overflow-y-auto space-y-1 text-sm">
-            {state?.bets.map(b => (
-              <div key={`${b.userId}-${b.slot ?? 'X'}`} className="flex justify-between bg-slate-800/50 rounded px-3 py-2">
-                <span>{b.userId.slice(0,6)}… {b.slot ? `(${b.slot})` : ''}</span>
-                <span>{b.amount}</span>
-                <span>{b.cashedOut ? `${b.cashoutMultiplier?.toFixed(2)}x` : (crashed ? '—' : isRunning ? '…' : 'pending')}</span>
-              </div>
-            ))}
-            {!state?.bets.length && <p className="text-slate-500">No bets yet.</p>}
-          </div>
-        </div>
         {isAdmin && (
           <div>
             <h2 className="font-semibold mb-2">Fairness</h2>
@@ -488,6 +477,21 @@ export default function CrashGamePage() {
 
       {/* History moved into canvas overlay */}
     </div>
+    {showHowTo && (
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={()=>setShowHowTo(false)}>
+        <div onClick={e=>e.stopPropagation()} className="max-w-md w-full bg-slate-900 rounded-xl border border-slate-700 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold">How to play Crash</h3>
+            <button onClick={()=>setShowHowTo(false)} className="text-slate-300 hover:text-white">✕</button>
+          </div>
+          <ul className="list-disc pl-5 text-sm text-slate-300 space-y-1">
+            <li>Enter your bet amount for A or B during the betting window.</li>
+            <li>When the flight starts, cash out before it crashes to win coins.</li>
+            <li>Higher multiplier increases risk. Play responsibly.</li>
+          </ul>
+        </div>
+      </div>
+    )}
     {isAdmin && <p className="text-xs text-slate-500">Prototype crash logic with deterministic fairness (seed hash + server seed displayed).</p>}
   </div></RequireAuth>;
 }

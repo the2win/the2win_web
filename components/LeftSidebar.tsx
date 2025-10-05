@@ -58,7 +58,8 @@ export function LeftSidebar() {
           <div className="border-t border-slate-800 pt-4 space-y-2">
             {!collapsed && (
               <div className="text-xs text-slate-400">
-                <div className="truncate">Balance: <span className="text-indigo-300 font-semibold">{user.balance}</span></div>
+                <div className="truncate">Balance: <span className="text-indigo-300 font-semibold">Rs. {Math.trunc(user.balance).toLocaleString('en-LK')}</span></div>
+                <div className="truncate">User ID: <span className="font-mono text-slate-300">{user.id}</span></div>
                 <div className="truncate">{user.email}</div>
               </div>
             )}
